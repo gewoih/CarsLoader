@@ -115,7 +115,7 @@ public sealed class CarsLoaderService : BackgroundService
 	{
 		await webDriver.Navigate().GoToUrlAsync(pageUrl);
 
-		var wait = new WebDriverWait(webDriver, TimeSpan.FromSeconds(10));
+		var wait = new WebDriverWait(webDriver, TimeSpan.FromSeconds(30));
 		wait.Until(driver => driver.FindElement(By.Id("sr_normal")));
 		
 		var tbody = webDriver.FindElement(By.Id("sr_normal"));
