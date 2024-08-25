@@ -1,4 +1,5 @@
 ﻿using System.Text.RegularExpressions;
+using System.Web;
 using CarsLoader.Infrastructure;
 using Encar;
 using Microsoft.EntityFrameworkCore;
@@ -34,24 +35,32 @@ public sealed class CarsLoaderService : BackgroundService
 
 			foreach (var carUrl in carsUrls)
 			{
-				var builtCar = await BuildCarFromUrlAsync(webDriver, carUrl);
+				try
+				{
+					var builtCar = await BuildCarFromUrlAsync(webDriver, carUrl);
 
-				var isCarExists = await context.Cars
-					.AsNoTracking()
-					.AnyAsync(c => c.EncarId == builtCar.EncarId ||
-					               (c.Manufacturer == builtCar.Manufacturer && c.Model == builtCar.Model &&
-					                c.Series == builtCar.Series && c.Color == builtCar.Color &&
-					                c.ProductionDate == builtCar.ProductionDate && c.Mileage == builtCar.Mileage),
-						cancellationToken: stoppingToken);
+					var isCarExists = await context.Cars
+						.AsNoTracking()
+						.AnyAsync(c => c.EncarId == builtCar.EncarId ||
+						               (c.Manufacturer == builtCar.Manufacturer && c.Model == builtCar.Model &&
+						                c.Series == builtCar.Series && c.Color == builtCar.Color &&
+						                c.ProductionDate == builtCar.ProductionDate && c.Mileage == builtCar.Mileage),
+							cancellationToken: stoppingToken);
 
-				if (isCarExists)
-					return;
+					if (isCarExists)
+						return;
 
-				await context.Cars.AddAsync(builtCar, stoppingToken);
-				await context.SaveChangesAsync(stoppingToken);
+					await context.Cars.AddAsync(builtCar, stoppingToken);
+					await context.SaveChangesAsync(stoppingToken);
+
+				}
+				catch (Exception e)
+				{
+					Console.WriteLine(e);
+				}
 			}
 
-			await Task.Delay(TimeSpan.FromMinutes(10), stoppingToken);
+			await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
 		}
 	}
 
@@ -59,7 +68,11 @@ public sealed class CarsLoaderService : BackgroundService
 	{
 		await webDriver.Navigate().GoToUrlAsync(carUrl);
 
+		var wait = new WebDriverWait(webDriver, TimeSpan.FromSeconds(60));
+		wait.Until(driver => driver.FindElements(By.Name("carDetail")).Count > 0);
 		var form = webDriver.FindElement(By.Name("carDetail"));
+		
+		wait.Until(driver => driver.FindElements(By.TagName("input")).Count > 1);
 		var inputFields = form.FindElements(By.TagName("input"));
 
 		var car = new Car();
@@ -115,10 +128,11 @@ public sealed class CarsLoaderService : BackgroundService
 	{
 		await webDriver.Navigate().GoToUrlAsync(pageUrl);
 
-		var wait = new WebDriverWait(webDriver, TimeSpan.FromSeconds(30));
-		wait.Until(driver => driver.FindElement(By.Id("sr_normal")));
-		
+		var wait = new WebDriverWait(webDriver, TimeSpan.FromSeconds(60));
+		wait.Until(driver => driver.FindElements(By.Id("sr_normal")).Count > 0);
 		var tbody = webDriver.FindElement(By.Id("sr_normal"));
+
+		wait.Until(driver => driver.FindElements(By.XPath(".//tr[@data-index]")).Count > 10);
 		var carsRows = tbody.FindElements(By.XPath(".//tr[@data-index]"));
 
 		var carsUrls = new List<string>();
@@ -139,9 +153,24 @@ public sealed class CarsLoaderService : BackgroundService
 	private static IEnumerable<string> ExtractCarImagesUrls(WebDriver webDriver)
 	{
 		var photoLinks = webDriver.FindElements(By.CssSelector("img.photo_s"));
-		foreach (var link in photoLinks)
+		foreach (var linkElement in photoLinks)
 		{
-			yield return link.GetAttribute("src");
+			var url = linkElement.GetAttribute("src");
+			yield return RemoveQueryParameters(url, ["cg", "wtmk", "wtmkg", "wtmkw", "wtmkh", "t", "cw", "ch", "rh"]);
 		}
+	}
+	
+	private static string RemoveQueryParameters(string url, string[] parametersToRemove)
+	{
+		var uriBuilder = new UriBuilder(url);
+		var query = HttpUtility.ParseQueryString(uriBuilder.Query);
+
+		foreach (var param in parametersToRemove)
+		{
+			query.Remove(param);
+		}
+
+		uriBuilder.Query = query.ToString();
+		return uriBuilder.ToString();
 	}
 }

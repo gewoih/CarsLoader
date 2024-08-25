@@ -9,11 +9,13 @@ builder.Services.AddAuthorization();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+builder.Services.AddHttpClient();
 
 builder.Services.AddDbContext<CarsContext>(options => options.UseNpgsql("Host=localhost;Database=cars_loader;username=postgres;password=24042001Nr;"));
 
 builder.Services.AddSingleton<IWebDriverFactory, WebDriverFactory>();
 builder.Services.AddHostedService<CarsLoaderService>();
+builder.Services.AddHostedService<CarsImagesLoaderService>();
 
 var app = builder.Build();
 

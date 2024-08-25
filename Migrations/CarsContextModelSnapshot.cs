@@ -82,6 +82,9 @@ namespace CarsLoader.Migrations
                     b.Property<Guid>("CarId")
                         .HasColumnType("uuid");
 
+                    b.Property<bool>("IsDownloaded")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Url")
                         .IsRequired()
                         .HasColumnType("text");
