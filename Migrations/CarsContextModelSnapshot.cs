@@ -22,7 +22,7 @@ namespace CarsLoader.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("Encar.Car", b =>
+            modelBuilder.Entity("CarsLoader.Models.Car", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -40,6 +40,9 @@ namespace CarsLoader.Migrations
 
                     b.Property<int>("FuelType")
                         .HasColumnType("integer");
+
+                    b.Property<bool>("IsTranslated")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("Manufacturer")
                         .IsRequired()
@@ -73,7 +76,7 @@ namespace CarsLoader.Migrations
                     b.ToTable("Cars");
                 });
 
-            modelBuilder.Entity("Encar.CarImage", b =>
+            modelBuilder.Entity("CarsLoader.Models.CarImage", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -96,16 +99,16 @@ namespace CarsLoader.Migrations
                     b.ToTable("Images");
                 });
 
-            modelBuilder.Entity("Encar.CarImage", b =>
+            modelBuilder.Entity("CarsLoader.Models.CarImage", b =>
                 {
-                    b.HasOne("Encar.Car", null)
+                    b.HasOne("CarsLoader.Models.Car", null)
                         .WithMany("Images")
                         .HasForeignKey("CarId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Encar.Car", b =>
+            modelBuilder.Entity("CarsLoader.Models.Car", b =>
                 {
                     b.Navigation("Images");
                 });

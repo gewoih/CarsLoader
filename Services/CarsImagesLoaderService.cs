@@ -17,7 +17,7 @@ public sealed class CarsImagesLoaderService : BackgroundService
 
 	protected override async Task ExecuteAsync(CancellationToken stoppingToken)
 	{
-		var scope = _serviceProvider.CreateAsyncScope();
+		await using var scope = _serviceProvider.CreateAsyncScope();
 		while (!stoppingToken.IsCancellationRequested)
 		{
 			var context = scope.ServiceProvider.GetRequiredService<CarsContext>();

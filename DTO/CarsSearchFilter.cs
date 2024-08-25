@@ -14,5 +14,5 @@ public class CarsSearchFilter
 	public decimal? WonPriceFrom { get; set; }
 	public decimal? WonPriceTo { get; set; }
 	public int Skip { get; set; } = 0;
-	public int Take { get; set; } = 20;
+	public int Take { get; set; } = 100;
 }

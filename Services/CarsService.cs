@@ -18,7 +18,7 @@ public sealed class CarsService : ICarsService
 	{
 		var carsSearchQuery = _context.Cars
 			.Include(car => car.Images)
-			.Where(car => car.Images.All(image => image.IsDownloaded))
+			.Where(car => car.Images.All(image => image.IsDownloaded) && car.IsTranslated)
 			.AsQueryable();
 
 		if (!string.IsNullOrEmpty(filter.Manufacturer))
@@ -73,6 +73,7 @@ public sealed class CarsService : ICarsService
 	{
 		return await _context.Cars
 			.AsNoTracking()
+			.Where(car => car.IsTranslated)
 			.Select(car => car.Manufacturer)
 			.Distinct()
 			.ToListAsync();
@@ -82,6 +83,7 @@ public sealed class CarsService : ICarsService
 	{
 		return await _context.Cars
 			.AsNoTracking()
+			.Where(car => car.IsTranslated)
 			.Where(car => car.Manufacturer.ToLower() == manufacturer.ToLower())
 			.Select(car => car.Model)
 			.Distinct()
@@ -92,6 +94,7 @@ public sealed class CarsService : ICarsService
 	{
 		return await _context.Cars
 			.AsNoTracking()
+			.Where(car => car.IsTranslated)
 			.Where(car => car.Model.ToLower() == model.ToLower())
 			.Select(car => car.Series)
 			.Distinct()

@@ -13,5 +13,6 @@ public class Car
 	public int EngineCapacity { get; set; }
 	public int Mileage { get; set; }
 	public decimal WonPrice { get; set; }
+	public bool IsTranslated { get; set; }
 	public List<CarImage> Images { get; set; }
 }

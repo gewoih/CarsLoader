@@ -4,7 +4,7 @@ namespace CarsLoader.Services;
 
 public static class TranslationService
 {
-	public static async Task<IEnumerable<string>> TranslateToEnglish(IEnumerable<string> texts)
+	public static async Task<List<string>> TranslateToEnglish(this IEnumerable<string> texts)
 	{
 		var client = await TranslationServiceClient.CreateAsync();
 		var request = new TranslateTextRequest
@@ -15,7 +15,7 @@ public static class TranslationService
 		};
 		
 		var response = await client.TranslateTextAsync(request);
-		var translations = response.Translations.Select(translation => translation.TranslatedText);
+		var translations = response.Translations.Select(translation => translation.TranslatedText).ToList();
 
 		return translations;
 	}
