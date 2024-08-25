@@ -6,6 +6,7 @@ namespace CarsLoader.Services;
 public interface ICarsService
 {
 	Task<(List<Car>, int)> GetAsync(CarsSearchFilter filter);
+	Task<Car?> GetAsync(Guid id);
 	Task<List<string>> GetAllManufacturers();
 	Task<List<string>> GetModels(string manufacturer);
 	Task<List<string>> GetSeries(string model);

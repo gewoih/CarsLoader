@@ -55,10 +55,8 @@ public sealed class CarsLoaderService : BackgroundService
 
 					var isCarExists = await context.Cars
 						.AsNoTracking()
-						.AnyAsync(c => c.EncarId == builtCar.EncarId ||
-						               (c.Manufacturer == builtCar.Manufacturer && c.Model == builtCar.Model &&
-						                c.Series == builtCar.Series && c.Color == builtCar.Color &&
-						                c.ProductionDate == builtCar.ProductionDate && c.Mileage == builtCar.Mileage),
+						.AnyAsync(c => c.EncarId == builtCar.EncarId || 
+						               (c.ProductionDate == builtCar.ProductionDate && c.Mileage == builtCar.Mileage),
 							cancellationToken: stoppingToken);
 
 					if (isCarExists)
@@ -77,7 +75,7 @@ public sealed class CarsLoaderService : BackgroundService
 		}
 	}
 
-	private static async Task<Car> BuildCarFromUrlAsync(WebDriver webDriver, string carUrl)
+	private static async Task<Car?> BuildCarFromUrlAsync(WebDriver webDriver, string carUrl)
 	{
 		await webDriver.Navigate().GoToUrlAsync(carUrl);
 

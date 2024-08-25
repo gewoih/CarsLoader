@@ -1,4 +1,5 @@
 ﻿using CarsLoader.Infrastructure;
+using CarsLoader.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace CarsLoader.Services;
@@ -14,6 +15,7 @@ public sealed class CarsTranslationService : BackgroundService
 
 	protected override async Task ExecuteAsync(CancellationToken stoppingToken)
 	{
+		return;
 		await using var scope = _serviceProvider.CreateAsyncScope();
 		while (!stoppingToken.IsCancellationRequested)
 		{
@@ -40,7 +42,7 @@ public sealed class CarsTranslationService : BackgroundService
 					notTranslatedCars[i].IsTranslated = true;
 				}
 
-				await context.SaveChangesAsync(stoppingToken);
+				//await context.SaveChangesAsync(stoppingToken);
 			}
 
 			await Task.Delay(TimeSpan.FromMinutes(10), stoppingToken);

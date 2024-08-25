@@ -69,6 +69,20 @@ public sealed class CarsService : ICarsService
 		return (foundCars, totalCars);
 	}
 
+	public async Task<Car?> GetAsync(Guid id)
+	{
+		var foundCar = await _context.Cars
+			.Include(car => car.Images)
+			.FirstOrDefaultAsync(car => car.Id == id);
+
+		if (foundCar is not null)
+		{
+			foundCar.Images = foundCar.Images.OrderBy(image => image.Url).ToList();
+		}
+
+		return foundCar;
+	}
+
 	public async Task<List<string>> GetAllManufacturers()
 	{
 		return await _context.Cars
