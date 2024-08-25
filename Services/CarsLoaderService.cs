@@ -1,7 +1,7 @@
 ﻿using System.Text.RegularExpressions;
 using System.Web;
 using CarsLoader.Infrastructure;
-using Encar;
+using CarsLoader.Models;
 using Microsoft.EntityFrameworkCore;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Support.UI;
@@ -13,8 +13,11 @@ public sealed class CarsLoaderService : BackgroundService
 	private readonly IWebDriverFactory _webDriverFactory;
 	private readonly IServiceProvider _serviceProvider;
 
-	private const string CarsUrl =
-		"http://www.encar.com/fc/fc_carsearchlist.do?carType=for&searchType=model&TG.R=B#!%7B%22action%22%3A%22(And.Hidden.N._.CarType.N._.SellType.%EC%9D%BC%EB%B0%98._.(Or.FuelType.%EA%B0%80%EC%86%94%EB%A6%B0._.FuelType.%EB%94%94%EC%A0%A4.)_.Condition.Record._.Year.range(201900..)._.Mileage.range(..100000)._.Price.range(1000..).)%22%2C%22toggle%22%3A%7B%7D%2C%22layer%22%3A%22%22%2C%22sort%22%3A%22ModifiedDate%22%2C%22page%22%3A1%2C%22limit%22%3A250%2C%22searchKey%22%3A%22%22%2C%22loginCheck%22%3Afalse%7D";
+	private readonly List<string> _encarCarsPages =
+	[
+		"http://www.encar.com/fc/fc_carsearchlist.do?carType=for&searchType=model&TG.R=B#!%7B%22action%22%3A%22(And.Hidden.N._.CarType.N._.SellType.%EC%9D%BC%EB%B0%98._.(Or.FuelType.%EA%B0%80%EC%86%94%EB%A6%B0._.FuelType.%EB%94%94%EC%A0%A4.)_.Condition.Record.)%22%2C%22toggle%22%3A%7B%224%22%3A0%7D%2C%22layer%22%3A%22%22%2C%22sort%22%3A%22ModifiedDate%22%2C%22page%22%3ApageNumber%2C%22limit%22%3A250%2C%22searchKey%22%3A%22%22%2C%22loginCheck%22%3Afalse%7D",
+		"http://www.encar.com/dc/dc_carsearchlist.do?carType=kor&searchType=model&TG.R=A#!%7B%22action%22%3A%22(And.Hidden.N._.CarType.Y._.Condition.Record._.(Or.FuelType.%EB%94%94%EC%A0%A4._.FuelType.%EA%B0%80%EC%86%94%EB%A6%B0.)_.SellType.%EC%9D%BC%EB%B0%98.)%22%2C%22toggle%22%3A%7B%7D%2C%22layer%22%3A%22%22%2C%22sort%22%3A%22ModifiedDate%22%2C%22page%22%3ApageNumber%2C%22limit%22%3A250%2C%22searchKey%22%3A%22%22%2C%22loginCheck%22%3Afalse%7D"
+	];
 
 	public CarsLoaderService(IWebDriverFactory webDriverFactory, IServiceProvider serviceProvider)
 	{
@@ -24,18 +27,29 @@ public sealed class CarsLoaderService : BackgroundService
 
 	protected override async Task ExecuteAsync(CancellationToken stoppingToken)
 	{
-		var scope = _serviceProvider.CreateAsyncScope();
+		await using var scope = _serviceProvider.CreateAsyncScope();
 		while (!stoppingToken.IsCancellationRequested)
 		{
 			var context = scope.ServiceProvider.GetRequiredService<CarsContext>();
 
 			using var webDriver = _webDriverFactory.CreateDriver();
-			var carsUrls = await ExtractCarsUrlsAsync(webDriver, CarsUrl);
-			carsUrls = carsUrls.Distinct().ToList();
 
-			foreach (var carUrl in carsUrls)
+			try
 			{
-				try
+				var carsUrls = new List<string>();
+				for (var pageNumber = 1; pageNumber <= 1; pageNumber++)
+				{
+					foreach (var encarCarsPage in _encarCarsPages)
+					{
+						var encarCarsExactPage = encarCarsPage.Replace("pageNumber", pageNumber.ToString());
+						var carUrls = await ExtractCarsUrlsAsync(webDriver, encarCarsExactPage);
+						carsUrls.AddRange(carUrls);
+					}
+				}
+
+				carsUrls = carsUrls.Distinct().ToList();
+
+				foreach (var carUrl in carsUrls)
 				{
 					var builtCar = await BuildCarFromUrlAsync(webDriver, carUrl);
 
@@ -48,16 +62,15 @@ public sealed class CarsLoaderService : BackgroundService
 							cancellationToken: stoppingToken);
 
 					if (isCarExists)
-						return;
+						continue;
 
 					await context.Cars.AddAsync(builtCar, stoppingToken);
 					await context.SaveChangesAsync(stoppingToken);
-
 				}
-				catch (Exception e)
-				{
-					Console.WriteLine(e);
-				}
+			}
+			catch (Exception ex)
+			{
+				// ignored
 			}
 
 			await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
@@ -71,7 +84,7 @@ public sealed class CarsLoaderService : BackgroundService
 		var wait = new WebDriverWait(webDriver, TimeSpan.FromSeconds(60));
 		wait.Until(driver => driver.FindElements(By.Name("carDetail")).Count > 0);
 		var form = webDriver.FindElement(By.Name("carDetail"));
-		
+
 		wait.Until(driver => driver.FindElements(By.TagName("input")).Count > 1);
 		var inputFields = form.FindElements(By.TagName("input"));
 
@@ -99,7 +112,12 @@ public sealed class CarsLoaderService : BackgroundService
 					car.Color = value;
 					break;
 				case "whatfuel":
-					name = "Топливо";
+					car.FuelType = value switch
+					{
+						"가솔린" => FuelType.Gasoline,
+						"디젤" => FuelType.Diesel,
+						_ => car.FuelType
+					};
 					break;
 				case "mnfcnm":
 					car.Manufacturer = value;
@@ -114,8 +132,8 @@ public sealed class CarsLoaderService : BackgroundService
 					car.WonPrice = decimal.Parse(value) * 10000;
 					break;
 				case "yr":
-					var year = int.Parse(string.Concat(value.Take(4)));
-					var month = int.Parse(string.Concat(value.TakeLast(2)));
+					var year = int.Parse(value[..4]);
+					var month = int.Parse(value.Substring(4, 2));
 					car.ProductionDate = new DateOnly(year, month, 1);
 					break;
 			}
@@ -156,10 +174,11 @@ public sealed class CarsLoaderService : BackgroundService
 		foreach (var linkElement in photoLinks)
 		{
 			var url = linkElement.GetAttribute("src");
-			yield return RemoveQueryParameters(url, ["cg", "wtmk", "wtmkg", "wtmkw", "wtmkh", "t", "cw", "ch", "rh"]);
+			yield return RemoveQueryParameters(url,
+				["cg", "wtmk", "wtmkg", "wtmkw", "wtmkh", "t", "cw", "ch", "rh"]);
 		}
 	}
-	
+
 	private static string RemoveQueryParameters(string url, string[] parametersToRemove)
 	{
 		var uriBuilder = new UriBuilder(url);

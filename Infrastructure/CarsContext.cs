@@ -1,4 +1,4 @@
-﻿using Encar;
+﻿using CarsLoader.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace CarsLoader.Infrastructure;

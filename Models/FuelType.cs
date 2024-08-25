@@ -1,4 +1,4 @@
-﻿namespace Encar;
+﻿namespace CarsLoader.Models;
 
 public enum FuelType
 {

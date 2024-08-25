@@ -1,4 +1,4 @@
-﻿namespace Encar;
+﻿namespace CarsLoader.Models;
 
 public class Car
 {
@@ -14,9 +14,4 @@ public class Car
 	public int Mileage { get; set; }
 	public decimal WonPrice { get; set; }
 	public List<CarImage> Images { get; set; }
-
-	public override string ToString()
-	{
-		return $"{Manufacturer} {Model} {Series} ({ProductionDate.Year})";
-	}
 }

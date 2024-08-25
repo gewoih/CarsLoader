@@ -1,6 +1,6 @@
 ﻿using OpenQA.Selenium;
 
-namespace Encar;
+namespace CarsLoader.Services.WebBehavior;
 
 public class RandomClicks
 {

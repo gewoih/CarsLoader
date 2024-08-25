@@ -6,11 +6,13 @@ namespace CarsLoader.Services;
 public sealed class CarsImagesLoaderService : BackgroundService
 {
 	private readonly IServiceProvider _serviceProvider;
-	private const string ImagesPath = "C:/CarsLoader";
+	private readonly string _imagesPath;
 
-	public CarsImagesLoaderService(IServiceProvider serviceProvider)
+	public CarsImagesLoaderService(IServiceProvider serviceProvider, IConfiguration configuration)
 	{
 		_serviceProvider = serviceProvider;
+		_imagesPath = configuration["ImagesPath"];
+		Directory.CreateDirectory(_imagesPath);
 	}
 
 	protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -21,25 +23,29 @@ public sealed class CarsImagesLoaderService : BackgroundService
 			var context = scope.ServiceProvider.GetRequiredService<CarsContext>();
 			var httpClient = scope.ServiceProvider.GetRequiredService<HttpClient>();
 			var imagesToDownload = await context.Images
-				.Where(image => !image.IsDownloaded && image.CarId == Guid.Parse("1ad7c99c-8aab-42da-945b-abbd2e904ce3"))
+				.Where(image => !image.IsDownloaded)
 				.OrderBy(image => image.Url)
 				.ToListAsync(cancellationToken: stoppingToken);
 
-			for (var index = 0; index < imagesToDownload.Count; index++)
+			var imagesGroupedByCarId = imagesToDownload.GroupBy(image => image.CarId);
+			var downloadTasks = imagesGroupedByCarId.SelectMany(group =>
 			{
-				var carImage = imagesToDownload[index];
-				var imageBytes = await httpClient.GetByteArrayAsync(carImage.Url, stoppingToken);
-				Directory.CreateDirectory(ImagesPath);
+				return group.Select(async (carImage, index) =>
+				{
+					var imageBytes = await httpClient.GetByteArrayAsync(carImage.Url, stoppingToken);
 
-				var imagePath = $"{ImagesPath}/{carImage.CarId}_{index}.jpg";
-				await File.WriteAllBytesAsync(imagePath, imageBytes, stoppingToken);
+					var imagePath = Path.Combine(_imagesPath, $"{carImage.CarId}_{index}.jpg");
+					await File.WriteAllBytesAsync(imagePath, imageBytes, stoppingToken);
 
-				carImage.Url = imagePath;
-				carImage.IsDownloaded = true;
-			}
+					carImage.Url = imagePath;
+					carImage.IsDownloaded = true;
+				});
+			});
+
+			await Task.WhenAll(downloadTasks);
 
 			await context.SaveChangesAsync(stoppingToken);
-			await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
+			await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
 		}
 	}
 }
